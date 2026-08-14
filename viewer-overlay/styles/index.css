@@ -3,7 +3,7 @@
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   
   /* HSL Tailored Palette */
-  --bg-hud: hsla(222, 47%, 10%, 0.92);
+  --bg-hud: hsla(222, 47%, 10%, 0.94);
   --bg-card: hsla(220, 38%, 14%, 0.95);
   --bg-card-hover: hsla(220, 38%, 19%, 0.98);
   --bg-card-active: hsla(220, 42%, 22%, 1);
@@ -22,6 +22,8 @@
   --streak-win: hsl(195, 90%, 55%);
   --streak-loss: hsl(15, 85%, 55%);
   --mana-blue: hsl(210, 95%, 60%);
+  --star-gold: hsl(45, 100%, 50%);
+  --star-silver: hsl(210, 25%, 85%);
   --badge-bg: hsla(42, 90%, 55%, 0.2);
   
   --radius-sm: 4px;
@@ -93,8 +95,8 @@ body {
 
 /* Main HUD Panel */
 .hud-panel {
-  width: 340px;
-  max-height: 80vh;
+  width: 350px;
+  max-height: 82vh;
   background: var(--bg-hud);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -254,7 +256,7 @@ body {
 .tab-content {
   padding: 12px;
   overflow-y: auto;
-  max-height: 380px;
+  max-height: 400px;
 }
 
 .tab-content.hidden {
@@ -400,6 +402,114 @@ body {
   font-size: 10px;
   color: var(--text-muted);
   font-weight: 700;
+}
+
+/* Board Tab Layout (Traits Sidebar + Champions Grid) */
+.board-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Active Traits List */
+.traits-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.trait-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.trait-count {
+  font-weight: 800;
+}
+
+/* Board Champions Grid */
+.champions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.champion-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.champion-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.champion-portrait {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  object-fit: cover;
+}
+
+.champion-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.champion-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.champion-stars {
+  font-size: 9px;
+  color: var(--star-gold);
+  letter-spacing: 1px;
+}
+
+.champion-items {
+  display: flex;
+  gap: 4px;
+  min-height: 22px;
+}
+
+.champion-item-slot {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid var(--border-subtle);
+  background: hsla(220, 40%, 10%, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.champion-item-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 2px;
 }
 
 /* Empty State */

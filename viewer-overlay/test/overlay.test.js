@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
 import { JSDOM } from "jsdom";
-import { renderHUD, renderRecipeHelper } from "../src/ui.js";
+import { renderHUD, renderRecipeHelper, renderBoard } from "../src/ui.js";
 import { TFTOverlayApp } from "../src/app.js";
 
 const HTML_SKELETON = `
@@ -30,6 +30,12 @@ const HTML_SKELETON = `
         <div id="component-chips-container" class="filter-chips-list"></div>
       </div>
       <div id="recipe-list" class="recipe-list"></div>
+    </div>
+    <div id="tab-board" class="tab-content" style="display: none;">
+      <div class="board-container">
+        <div id="traits-container" class="traits-summary"></div>
+        <div id="champions-container" class="champions-grid"></div>
+      </div>
     </div>
     <div id="standby-view" class="standby-container"></div>
   </div>
@@ -74,7 +80,9 @@ describe("Viewer Overlay UI", () => {
         g: 48,
         strk: 3
       },
-      bch: ["TFT_Item_BFSword", "TFT_Item_ChainVest"]
+      bch: ["TFT_Item_BFSword", "TFT_Item_ChainVest"],
+      brd: [{ c: "TFT13_Vi", s: 2, i: ["TFT_Item_Bloodthirster"] }],
+      trt: [{ k: "TFT13_Enforcer", n: 4, t: 2 }]
     };
 
     renderHUD(root, liveState);
@@ -82,12 +90,24 @@ describe("Viewer Overlay UI", () => {
     const summaryBar = root.querySelector("#player-summary");
     const recipeBadge = root.querySelector("#recipe-tab-badge");
     const recipeCards = root.querySelectorAll(".recipe-card");
+    const champCards = root.querySelectorAll(".champion-card");
+    const traitBadges = root.querySelectorAll(".trait-badge");
 
     assert.strictEqual(statusBadge.textContent, "LIVE");
     assert.strictEqual(summaryBar.style.display, "grid");
     assert.strictEqual(recipeBadge.textContent, "1");
     assert.strictEqual(recipeCards.length, 1);
     assert.ok(recipeCards[0].textContent.includes("Edge of Night"));
+
+    // Board assertions
+    assert.strictEqual(champCards.length, 1);
+    assert.ok(champCards[0].textContent.includes("Vi"));
+    assert.ok(champCards[0].textContent.includes("★★"));
+
+    // Trait assertions
+    assert.strictEqual(traitBadges.length, 1);
+    assert.ok(traitBadges[0].textContent.includes("Enforcer"));
+    assert.ok(traitBadges[0].textContent.includes("4"));
   });
 
   it("filters recipe combinations when clicking component chip", () => {
@@ -97,7 +117,6 @@ describe("Viewer Overlay UI", () => {
     const chips = root.querySelectorAll(".component-chip");
     assert.strictEqual(chips.length, 2);
 
-    // Click BFSword chip to see its full recipe tree
     chips[0].click();
     const updatedCards = root.querySelectorAll(".recipe-card");
     assert.ok(updatedCards.length >= 8);

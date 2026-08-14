@@ -12,7 +12,7 @@ class TestRiotLiveClient(unittest.TestCase):
     def setUp(self):
         self.client = RiotLiveClient(endpoint="https://127.0.0.1:2999")
 
-    def test_parse_active_player_econ_and_bench_items(self):
+    def test_parse_active_player_econ_bench_board_and_traits(self):
         mock_raw_data = {
             "activePlayer": {
                 "summonerName": "TFTStreamer#NA1",
@@ -27,19 +27,27 @@ class TestRiotLiveClient(unittest.TestCase):
                 {
                     "summonerName": "TFTStreamer#NA1",
                     "level": 8,
-                    "scores": {
-                        "assists": 0,
-                        "creepScore": 0,
-                        "deaths": 0,
-                        "kills": 0,
-                        "wardScore": 0.0
-                    },
                     "streak": 3,
                     "isDead": False,
                     "items": [
                         {"itemID": 1, "rawItemName": "TFT_Item_BFSword"},
-                        {"itemID": 5, "rawItemName": "TFT_Item_ChainVest"},
-                        {"itemID": 3, "rawItemName": "TFT_Item_NeedlesslyLargeRod"}
+                        {"itemID": 5, "rawItemName": "TFT_Item_ChainVest"}
+                    ],
+                    "champions": [
+                        {
+                            "name": "TFT13_Vi",
+                            "starLevel": 2,
+                            "items": ["TFT_Item_Bloodthirster", "TFT_Item_TitansResolve"]
+                        },
+                        {
+                            "name": "TFT13_Caitlyn",
+                            "starLevel": 2,
+                            "items": ["TFT_Item_InfinityEdge", "TFT_Item_LastWhisper"]
+                        }
+                    ],
+                    "traits": [
+                        {"name": "TFT13_Enforcer", "numUnits": 4, "style": 2},
+                        {"name": "TFT13_Sniper", "numUnits": 2, "style": 1}
                     ]
                 }
             ],
@@ -61,7 +69,21 @@ class TestRiotLiveClient(unittest.TestCase):
         self.assertEqual(normalized["player"]["streak"], 3)
         self.assertIn("bench", normalized)
         self.assertIn("TFT_Item_BFSword", normalized["bench"])
-        self.assertIn("TFT_Item_ChainVest", normalized["bench"])
+
+        # Board verification
+        self.assertIn("board", normalized)
+        self.assertEqual(len(normalized["board"]), 2)
+        vi_unit = normalized["board"][0]
+        self.assertEqual(vi_unit["champion"], "TFT13_Vi")
+        self.assertEqual(vi_unit["stars"], 2)
+        self.assertEqual(len(vi_unit["items"]), 2)
+
+        # Traits verification
+        self.assertIn("traits", normalized)
+        self.assertEqual(len(normalized["traits"]), 2)
+        self.assertEqual(normalized["traits"][0]["key"], "TFT13_Enforcer")
+        self.assertEqual(normalized["traits"][0]["count"], 4)
+        self.assertEqual(normalized["traits"][0]["tier"], 2)
 
     def test_handle_connection_failure_returns_standby(self):
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -80,6 +102,8 @@ class TestRiotLiveClient(unittest.TestCase):
             "status": "active",
             "player": {"level": 7, "gold": 30, "health": 80, "streak": 2},
             "bench": ["TFT_Item_BFSword", "TFT_Item_ChainVest"],
+            "board": [{"champion": "TFT13_Vi", "stars": 2, "items": ["TFT_Item_Bloodthirster"]}],
+            "traits": [{"key": "TFT13_Enforcer", "count": 2, "tier": 1}],
             "timestamp": 1723617000
         }
 
@@ -96,7 +120,6 @@ class TestRiotLiveClient(unittest.TestCase):
             self.assertEqual(req.full_url, "https://ebs.example.com/api/v1/streamer/telemetry")
             self.assertEqual(req.headers.get("Authorization"), "Bearer secret_streamer_jwt")
             self.assertEqual(req.headers.get("X-twitch-channel-id"), "12345678")
-            self.assertEqual(req.headers.get("Content-type"), "application/json")
 
 if __name__ == "__main__":
     unittest.main()

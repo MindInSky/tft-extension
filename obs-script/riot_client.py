@@ -38,7 +38,6 @@ class RiotLiveClient:
         level = active_player.get("level", 1)
         gold = active_player.get("currentGold", 0)
         
-        # Health from championStats or default to 100
         champ_stats = active_player.get("championStats", {})
         health = int(champ_stats.get("currentHealth", 100))
 
@@ -52,13 +51,17 @@ class RiotLiveClient:
         
         streak = 0
         raw_items = []
+        raw_champions = []
+        raw_traits = []
+
         if matched_player:
             streak = matched_player.get("streak", 0)
             raw_items = matched_player.get("items", [])
+            raw_champions = matched_player.get("champions", [])
+            raw_traits = matched_player.get("traits", [])
 
         # Extract bench / inventory items
         bench_items = []
-        # Check raw itemData array if present in TFT client response
         if "itemData" in raw_data and isinstance(raw_data["itemData"], list):
             for item in raw_data["itemData"]:
                 name = item.get("name") or item.get("rawItemName") or ""
@@ -73,6 +76,44 @@ class RiotLiveClient:
                 elif isinstance(item, str):
                     bench_items.append(item)
 
+        # Extract board champions
+        board_units = []
+        for champ in raw_champions:
+            c_name = champ.get("name") or champ.get("rawChampionName") or champ.get("championName", "")
+            if not c_name:
+                continue
+            stars = int(champ.get("starLevel", champ.get("stars", 1)))
+            items_list = []
+            for item in champ.get("items", []):
+                if isinstance(item, dict):
+                    item_name = item.get("rawItemName") or item.get("name") or str(item.get("itemID", ""))
+                    if item_name:
+                        items_list.append(item_name)
+                elif isinstance(item, str):
+                    items_list.append(item)
+
+            board_units.append({
+                "champion": c_name,
+                "stars": stars,
+                "items": items_list
+            })
+
+        # Extract trait synergies
+        active_traits = []
+        for t in raw_traits:
+            t_name = t.get("name") or t.get("rawTraitName") or ""
+            count = int(t.get("numUnits", t.get("count", 0)))
+            tier = int(t.get("style", t.get("tier", 0)))
+            if t_name and count > 0:
+                active_traits.append({
+                    "key": t_name,
+                    "count": count,
+                    "tier": tier
+                })
+
+        # Sort traits by tier descending, then count
+        active_traits.sort(key=lambda tr: (tr["tier"], tr["count"]), reverse=True)
+
         return {
             "status": "active",
             "timestamp": int(time.time()),
@@ -83,7 +124,9 @@ class RiotLiveClient:
                 "health": health,
                 "streak": streak
             },
-            "bench": bench_items
+            "bench": bench_items,
+            "board": board_units,
+            "traits": active_traits
         }
 
     def fetch_and_normalize(self):

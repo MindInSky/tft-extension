@@ -5,6 +5,7 @@ import {
   normalizeItemId
 } from "./recipes.js";
 import { BASE_COMPONENTS } from "./items_data.js";
+import { getChampionMeta, getTraitMeta } from "./board.js";
 
 let activeComponentFilter = null;
 
@@ -70,7 +71,6 @@ export function renderRecipeHelper(container, benchItems) {
 
   const rawList = Array.isArray(benchItems) ? benchItems : [];
   
-  // Count available base components
   const counts = {};
   for (const raw of rawList) {
     const norm = normalizeItemId(raw);
@@ -79,7 +79,6 @@ export function renderRecipeHelper(container, benchItems) {
     }
   }
 
-  // Render Component Filter Chips
   filterContainer.innerHTML = "";
   const componentKeys = Object.keys(counts);
 
@@ -110,7 +109,6 @@ export function renderRecipeHelper(container, benchItems) {
     }
   }
 
-  // Calculate recipes to display
   let itemsToDisplay = [];
   if (activeComponentFilter) {
     const combos = getComponentCombinations(activeComponentFilter);
@@ -157,6 +155,78 @@ export function renderRecipeHelper(container, benchItems) {
   }
 }
 
+export function renderBoard(container, boardUnits = [], traits = []) {
+  const boardTab = container.querySelector("#tab-board");
+  if (!boardTab) return;
+
+  const doc = container.ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!doc) return;
+
+  boardTab.innerHTML = `
+    <div class="board-container">
+      <div id="traits-container" class="traits-summary"></div>
+      <div id="champions-container" class="champions-grid"></div>
+    </div>
+  `;
+
+  const traitsContainer = boardTab.querySelector("#traits-container");
+  const championsContainer = boardTab.querySelector("#champions-container");
+
+  // Render Traits
+  if (traits.length === 0) {
+    traitsContainer.innerHTML = `<span style="font-size: 10px; color: var(--text-muted);">No active traits</span>`;
+  } else {
+    for (const tr of traits) {
+      const traitMeta = getTraitMeta(tr.k || tr.key, tr.n || tr.count, tr.t || tr.tier);
+      const badge = doc.createElement("div");
+      badge.className = "trait-badge";
+      badge.style.borderColor = traitMeta.tierColor;
+      badge.innerHTML = `
+        <span class="trait-name">${traitMeta.cleanName}</span>
+        <span class="trait-count" style="color: ${traitMeta.tierColor};">${traitMeta.count}</span>
+      `;
+      traitsContainer.appendChild(badge);
+    }
+  }
+
+  // Render Champions
+  if (boardUnits.length === 0) {
+    championsContainer.innerHTML = `<div class="empty-recipe-state">No champions on board.</div>`;
+  } else {
+    for (const unit of boardUnits) {
+      const champName = unit.c || unit.champion;
+      const stars = unit.s || unit.stars || 1;
+      const items = unit.i || unit.items || [];
+      const champMeta = getChampionMeta(champName);
+
+      const starString = "★".repeat(Math.min(stars, 3));
+
+      const card = doc.createElement("div");
+      card.className = "champion-card";
+      card.innerHTML = `
+        <div class="champion-header">
+          <img class="champion-portrait" src="${champMeta.iconUrl}" onerror="this.src='${champMeta.fallbackIconUrl}'" alt="${champMeta.cleanName}" />
+          <div class="champion-meta">
+            <span class="champion-name">${champMeta.cleanName}</span>
+            <span class="champion-stars">${starString}</span>
+          </div>
+        </div>
+        <div class="champion-items">
+          ${items.map(rawItem => {
+            const itemMeta = getItemMetadata(rawItem);
+            return `
+              <div class="champion-item-slot" data-tooltip-item="${itemMeta.id}">
+                <img src="${itemMeta.iconUrl}" alt="${itemMeta.name}" />
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+      championsContainer.appendChild(card);
+    }
+  }
+}
+
 export function renderHUD(container, state) {
   if (!container) return;
 
@@ -172,13 +242,11 @@ export function renderHUD(container, state) {
   // Player Summary Bar & Tabs
   const summaryBar = container.querySelector("#player-summary");
   const tabsBar = container.querySelector("#hud-tabs");
-  const recipesTab = container.querySelector("#tab-recipes");
   const standbyView = container.querySelector("#standby-view");
 
   if (isLive) {
     if (summaryBar) summaryBar.style.display = "grid";
     if (tabsBar) tabsBar.style.display = "flex";
-    if (recipesTab) recipesTab.style.display = "block";
     if (standbyView) standbyView.style.display = "none";
 
     const p = state.p;
@@ -207,10 +275,12 @@ export function renderHUD(container, state) {
 
     // Render Recipe helper
     renderRecipeHelper(container, state.bch || []);
+
+    // Render Board Champions & Traits
+    renderBoard(container, state.brd || [], state.trt || []);
   } else {
     if (summaryBar) summaryBar.style.display = "none";
     if (tabsBar) tabsBar.style.display = "none";
-    if (recipesTab) recipesTab.style.display = "none";
     if (standbyView) standbyView.style.display = "flex";
   }
 }

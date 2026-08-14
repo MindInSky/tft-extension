@@ -59,7 +59,7 @@
       </div>
 
       <!-- Tab Content: Recipe Helper -->
-      <div id="tab-recipes" class="tab-content" style="display: none;">
+      <div id="tab-recipes" class="tab-content">
         <!-- Available Component Filter Chips -->
         <div id="component-filters" class="component-filter-bar">
           <span class="filter-label">Items:</span>
@@ -72,13 +72,26 @@
         </div>
       </div>
 
+      <!-- Tab Content: Board Champions & Traits -->
+      <div id="tab-board" class="tab-content" style="display: none;">
+        <div class="board-container">
+          <div id="traits-container" class="traits-summary"></div>
+          <div id="champions-container" class="champions-grid"></div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Combat Stats (Container for Ticket 04) -->
+      <div id="tab-combat" class="tab-content" style="display: none;">
+        <div id="combat-container" class="combat-container"></div>
+      </div>
+
       <!-- Standby View when not in active game -->
       <div id="standby-view" class="standby-container">
         <svg class="standby-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
         </svg>
         <div class="standby-title">Waiting for Game</div>
-        <div class="standby-subtitle">Streamer is in lobby or queue. Live stats and craftable recipes appear automatically when match starts.</div>
+        <div class="standby-subtitle">Streamer is in lobby or queue. Live stats and board state appear automatically when match starts.</div>
       </div>
     </div>
 
