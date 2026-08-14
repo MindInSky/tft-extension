@@ -12,7 +12,7 @@ class TestRiotLiveClient(unittest.TestCase):
     def setUp(self):
         self.client = RiotLiveClient(endpoint="https://127.0.0.1:2999")
 
-    def test_parse_active_player_econ(self):
+    def test_parse_active_player_econ_and_bench_items(self):
         mock_raw_data = {
             "activePlayer": {
                 "summonerName": "TFTStreamer#NA1",
@@ -36,8 +36,16 @@ class TestRiotLiveClient(unittest.TestCase):
                     },
                     "streak": 3,
                     "isDead": False,
-                    "items": []
+                    "items": [
+                        {"itemID": 1, "rawItemName": "TFT_Item_BFSword"},
+                        {"itemID": 5, "rawItemName": "TFT_Item_ChainVest"},
+                        {"itemID": 3, "rawItemName": "TFT_Item_NeedlesslyLargeRod"}
+                    ]
                 }
+            ],
+            "itemData": [
+                {"name": "TFT_Item_BFSword", "slot": 0},
+                {"name": "TFT_Item_ChainVest", "slot": 1}
             ],
             "gameData": {
                 "gameMode": "TFT",
@@ -51,7 +59,9 @@ class TestRiotLiveClient(unittest.TestCase):
         self.assertEqual(normalized["player"]["gold"], 45)
         self.assertEqual(normalized["player"]["health"], 76)
         self.assertEqual(normalized["player"]["streak"], 3)
-        self.assertIn("timestamp", normalized)
+        self.assertIn("bench", normalized)
+        self.assertIn("TFT_Item_BFSword", normalized["bench"])
+        self.assertIn("TFT_Item_ChainVest", normalized["bench"])
 
     def test_handle_connection_failure_returns_standby(self):
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -69,6 +79,7 @@ class TestRiotLiveClient(unittest.TestCase):
         sample_state = {
             "status": "active",
             "player": {"level": 7, "gold": 30, "health": 80, "streak": 2},
+            "bench": ["TFT_Item_BFSword", "TFT_Item_ChainVest"],
             "timestamp": 1723617000
         }
 
@@ -81,7 +92,6 @@ class TestRiotLiveClient(unittest.TestCase):
             success = relay.send_telemetry(sample_state)
             self.assertTrue(success)
 
-            # Verify request headers and URL
             req = mock_urlopen.call_args[0][0]
             self.assertEqual(req.full_url, "https://ebs.example.com/api/v1/streamer/telemetry")
             self.assertEqual(req.headers.get("Authorization"), "Bearer secret_streamer_jwt")

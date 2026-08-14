@@ -3,10 +3,12 @@
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   
   /* HSL Tailored Palette */
-  --bg-hud: hsla(222, 47%, 10%, 0.88);
-  --bg-card: hsla(220, 38%, 14%, 0.92);
-  --bg-card-hover: hsla(220, 38%, 18%, 0.96);
+  --bg-hud: hsla(222, 47%, 10%, 0.92);
+  --bg-card: hsla(220, 38%, 14%, 0.95);
+  --bg-card-hover: hsla(220, 38%, 19%, 0.98);
+  --bg-card-active: hsla(220, 42%, 22%, 1);
   --border-subtle: hsla(220, 25%, 26%, 0.6);
+  --border-highlight: hsla(42, 90%, 55%, 0.6);
   
   --text-primary: hsl(210, 40%, 98%);
   --text-secondary: hsl(215, 20%, 75%);
@@ -20,6 +22,7 @@
   --streak-win: hsl(195, 90%, 55%);
   --streak-loss: hsl(15, 85%, 55%);
   --mana-blue: hsl(210, 95%, 60%);
+  --badge-bg: hsla(42, 90%, 55%, 0.2);
   
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -57,7 +60,6 @@ body {
   align-items: flex-end;
   gap: 8px;
   z-index: 1000;
-  transition: transform var(--transition-fast), opacity var(--transition-fast);
 }
 
 /* Floating HUD Trigger Icon */
@@ -91,7 +93,8 @@ body {
 
 /* Main HUD Panel */
 .hud-panel {
-  width: 320px;
+  width: 340px;
+  max-height: 80vh;
   background: var(--bg-hud);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -142,7 +145,7 @@ body {
 }
 
 .status-badge.live {
-  background: hsla(145, 65%, 48%, 0.2);
+  background: var(--health-bg);
   color: var(--health-green);
 }
 
@@ -168,7 +171,7 @@ body {
 
 /* Player Economy / Summary Bar */
 .player-summary-bar {
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
@@ -193,25 +196,273 @@ body {
 }
 
 .stat-value {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.stat-value.gold {
+.stat-value.gold { color: var(--gold-accent); }
+.stat-value.health { color: var(--health-green); }
+.stat-value.win-streak { color: var(--streak-win); }
+.stat-value.loss-streak { color: var(--streak-loss); }
+
+/* Navigation Tab Bar */
+.hud-nav-tabs {
+  display: flex;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 4px;
+}
+
+.nav-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+}
+
+.nav-tab.active {
+  color: var(--gold-accent);
+  border-bottom-color: var(--gold-accent);
+}
+
+.tab-badge {
+  background: var(--badge-bg);
+  color: var(--gold-accent);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+/* Tab Content Areas */
+.tab-content {
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* Recipe Component Filter Bar */
+.component-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.component-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  padding: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.component-chip:hover {
+  transform: scale(1.1);
+  border-color: var(--gold-accent);
+}
+
+.component-chip.active {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+
+.component-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 2px;
+}
+
+.chip-count {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--gold-accent);
+  color: #000;
+  font-size: 8px;
+  font-weight: 800;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Craftable Items List */
+.recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recipe-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.recipe-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-highlight);
+}
+
+.recipe-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.recipe-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recipe-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-desc-preview {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-formula {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.formula-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  border: 1px solid var(--border-subtle);
+}
+
+.formula-plus {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* Empty State */
+.empty-recipe-state {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Floating Rich Tooltip */
+.tft-tooltip {
+  position: absolute;
+  z-index: 2000;
+  width: 240px;
+  background: hsla(222, 47%, 8%, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.tft-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tooltip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.tooltip-title {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--gold-accent);
 }
 
-.stat-value.health {
-  color: var(--health-green);
+.tooltip-stats {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.stat-value.win-streak {
-  color: var(--streak-win);
-}
-
-.stat-value.loss-streak {
-  color: var(--streak-loss);
+.tooltip-desc {
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.35;
 }
 
 /* Standby Empty State */
@@ -241,15 +492,4 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   max-width: 220px;
-}
-
-/* Responsive adjustment */
-@media (max-width: 768px) {
-  #overlay-root {
-    top: 12px;
-    right: 12px;
-  }
-  .hud-panel {
-    width: 280px;
-  }
 }

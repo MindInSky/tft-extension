@@ -1,10 +1,11 @@
-import { renderHUD } from "./ui.js";
+import { renderHUD, setupTooltips } from "./ui.js";
 
 export class TFTOverlayApp {
   constructor(rootElement) {
     this.root = rootElement;
     this.state = { st: "standby", t: Math.floor(Date.now() / 1000) };
     this.isExpanded = true;
+    this.activeTab = "recipes";
 
     this.initElements();
     this.bindEvents();
@@ -14,6 +15,11 @@ export class TFTOverlayApp {
     this.panel = this.root.querySelector("#hud-panel");
     this.triggerBtn = this.root.querySelector("#hud-trigger");
     this.closeBtn = this.root.querySelector("#hud-close-btn");
+    this.tooltip = this.root.querySelector("#tft-tooltip");
+    
+    if (this.tooltip) {
+      setupTooltips(this.root, this.tooltip);
+    }
   }
 
   bindEvents() {
@@ -23,6 +29,31 @@ export class TFTOverlayApp {
     if (this.closeBtn) {
       this.closeBtn.addEventListener("click", () => this.togglePanel(false));
     }
+
+    // Tab switching
+    const tabBtns = this.root.querySelectorAll(".nav-tab");
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabName = btn.getAttribute("data-tab");
+        this.switchTab(tabName);
+      });
+    });
+  }
+
+  switchTab(tabName) {
+    this.activeTab = tabName;
+    const tabBtns = this.root.querySelectorAll(".nav-tab");
+    tabBtns.forEach(btn => {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tabName);
+    });
+
+    const allTabs = ["recipes", "board", "combat"];
+    allTabs.forEach(t => {
+      const tabContent = this.root.querySelector(`#tab-${t}`);
+      if (tabContent) {
+        tabContent.style.display = t === tabName ? "block" : "none";
+      }
+    });
   }
 
   togglePanel(forceState) {

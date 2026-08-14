@@ -42,7 +42,7 @@ class RiotLiveClient:
         champ_stats = active_player.get("championStats", {})
         health = int(champ_stats.get("currentHealth", 100))
 
-        # Find matching player in allPlayers for additional stats (e.g., streak)
+        # Find matching player in allPlayers
         all_players = raw_data.get("allPlayers", [])
         matched_player = None
         for p in all_players:
@@ -51,8 +51,27 @@ class RiotLiveClient:
                 break
         
         streak = 0
+        raw_items = []
         if matched_player:
             streak = matched_player.get("streak", 0)
+            raw_items = matched_player.get("items", [])
+
+        # Extract bench / inventory items
+        bench_items = []
+        # Check raw itemData array if present in TFT client response
+        if "itemData" in raw_data and isinstance(raw_data["itemData"], list):
+            for item in raw_data["itemData"]:
+                name = item.get("name") or item.get("rawItemName") or ""
+                if name:
+                    bench_items.append(name)
+        elif raw_items:
+            for item in raw_items:
+                if isinstance(item, dict):
+                    name = item.get("rawItemName") or item.get("name") or str(item.get("itemID", ""))
+                    if name:
+                        bench_items.append(name)
+                elif isinstance(item, str):
+                    bench_items.append(item)
 
         return {
             "status": "active",
@@ -63,7 +82,8 @@ class RiotLiveClient:
                 "gold": gold,
                 "health": health,
                 "streak": streak
-            }
+            },
+            "bench": bench_items
         }
 
     def fetch_and_normalize(self):
@@ -97,5 +117,5 @@ class StreamerRelay:
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as res:
                 return res.status in (200, 201, 202, 204)
-        except Exception as e:
+        except Exception:
             return False

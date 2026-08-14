@@ -48,14 +48,48 @@
         </div>
       </div>
 
+      <!-- Navigation Tabs -->
+      <div id="hud-tabs" class="hud-nav-tabs" style="display: none;">
+        <button class="nav-tab active" data-tab="recipes">
+          <span>Recipes</span>
+          <span id="recipe-tab-badge" class="tab-badge">0</span>
+        </button>
+        <button class="nav-tab" data-tab="board">Board</button>
+        <button class="nav-tab" data-tab="combat">Combat</button>
+      </div>
+
+      <!-- Tab Content: Recipe Helper -->
+      <div id="tab-recipes" class="tab-content" style="display: none;">
+        <!-- Available Component Filter Chips -->
+        <div id="component-filters" class="component-filter-bar">
+          <span class="filter-label">Items:</span>
+          <div id="component-chips-container" class="filter-chips-list" style="display: flex; gap: 4px;"></div>
+        </div>
+
+        <!-- Craftable Items List -->
+        <div id="recipe-list" class="recipe-list">
+          <div class="empty-recipe-state">No craftable completed items with current inventory.</div>
+        </div>
+      </div>
+
       <!-- Standby View when not in active game -->
       <div id="standby-view" class="standby-container">
         <svg class="standby-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
         </svg>
         <div class="standby-title">Waiting for Game</div>
-        <div class="standby-subtitle">Streamer is in lobby or queue. Live stats will appear automatically when match starts.</div>
+        <div class="standby-subtitle">Streamer is in lobby or queue. Live stats and craftable recipes appear automatically when match starts.</div>
       </div>
+    </div>
+
+    <!-- Rich Tooltip Element -->
+    <div id="tft-tooltip" class="tft-tooltip">
+      <div class="tooltip-header">
+        <img id="tooltip-icon" class="tooltip-icon" src="" alt="">
+        <span id="tooltip-title" class="tooltip-title"></span>
+      </div>
+      <div id="tooltip-stats" class="tooltip-stats"></div>
+      <div id="tooltip-desc" class="tooltip-desc"></div>
     </div>
   </div>
 
