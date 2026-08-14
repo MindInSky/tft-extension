@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFT Live Streamer Companion</title>
+  <link rel="stylesheet" href="./styles/index.css">
+  <!-- Official Twitch Extension Helper -->
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+</head>
+<body>
+  <div id="overlay-root">
+    <!-- Floating Trigger Icon Button -->
+    <button id="hud-trigger" class="hud-trigger-btn" title="Toggle TFT Stats" aria-label="Toggle TFT Stats">
+      <svg class="hud-trigger-icon" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5zm0 8.5L4.5 7 12 3.25 19.5 7 12 10.5zM2 17l10 5 10-5-2.25-1.12L12 19.75l-7.75-3.87L2 17zm0-5l10 5 10-5-2.25-1.12L12 14.75l-7.75-3.87L2 12z"/>
+      </svg>
+    </button>
+
+    <!-- Main Collapsible HUD Panel -->
+    <div id="hud-panel" class="hud-panel">
+      <!-- Header -->
+      <div class="hud-header">
+        <div class="hud-title-group">
+          <span class="hud-title">TFT Live</span>
+          <span id="status-badge" class="status-badge standby">STANDBY</span>
+        </div>
+        <button id="hud-close-btn" class="close-btn" title="Minimize" aria-label="Minimize">✕</button>
+      </div>
+
+      <!-- Player Summary Bar (Health, Level, Gold, Streak) -->
+      <div id="player-summary" class="player-summary-bar" style="display: none;">
+        <div class="stat-item">
+          <span class="stat-label">Health</span>
+          <span id="stat-health" class="stat-value health">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Level</span>
+          <span id="stat-level" class="stat-value">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Gold</span>
+          <span id="stat-gold" class="stat-value gold">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Streak</span>
+          <span id="stat-streak" class="stat-value">-</span>
+        </div>
+      </div>
+
+      <!-- Standby View when not in active game -->
+      <div id="standby-view" class="standby-container">
+        <svg class="standby-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <div class="standby-title">Waiting for Game</div>
+        <div class="standby-subtitle">Streamer is in lobby or queue. Live stats will appear automatically when match starts.</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

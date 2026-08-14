@@ -1,0 +1,13 @@
+{
+  "name": "tft-twitch-viewer-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "dev": "npx -y serve -l 3000 ."
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}
