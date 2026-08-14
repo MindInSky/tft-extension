@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OBS Studio Python Script & Standalone Daemon for TFT Live Client Relay.
-Captures live TFT game data from local port 2999 and transmits telemetry to EBS.
+Features adaptive sub-second polling and state-change diff broadcasting.
 """
 
 import sys
@@ -9,7 +9,7 @@ import os
 import time
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from riot_client import RiotLiveClient, StreamerRelay
+from riot_client import RiotLiveClient, StreamerRelay, StateDiffer, get_adaptive_interval_ms
 
 # OBS script state variables
 ebs_url = "http://localhost:8080"
@@ -20,29 +20,34 @@ is_running = False
 
 riot_client = None
 relay = None
+differ = None
 
 def init_services():
-    global riot_client, relay
+    global riot_client, relay, differ
     riot_client = RiotLiveClient()
     relay = StreamerRelay(ebs_url=ebs_url, streamer_token=streamer_token, channel_id=channel_id)
+    differ = StateDiffer()
 
 def poll_and_send():
-    global riot_client, relay
+    global riot_client, relay, differ
     if not streamer_token or not channel_id:
         return
-    if not riot_client or not relay:
+    if not riot_client or not relay or not differ:
         init_services()
 
     state = riot_client.fetch_and_normalize()
-    relay.send_telemetry(state)
+    
+    # Broadcast only if state changed or heartbeat expired
+    if differ.has_changed(state):
+        relay.send_telemetry(state)
 
 # --- OBS Python Script API Hooks ---
 
 def script_description():
     return (
         "<b>TFT Live Twitch Extension Relay</b><br/>"
-        "Polls local Teamfight Tactics In-Game API (port 2999) and streams live state "
-        "to Twitch Extension Backend Service."
+        "Polls local Teamfight Tactics In-Game API (port 2999) with adaptive frequency "
+        "and broadcasts low-latency updates to Twitch Extension Backend Service."
     )
 
 def script_update(settings):
@@ -84,12 +89,17 @@ def script_unload():
 
 # --- Standalone CLI mode for testing outside OBS ---
 if __name__ == "__main__":
-    print("[TFT OBS Relay] Running in standalone CLI mode. Polling local Riot client...")
+    print("[TFT OBS Relay] Running in adaptive daemon mode. Polling local Riot client...")
     client = RiotLiveClient()
+    diff_tracker = StateDiffer()
+    
     state = client.fetch_and_normalize()
-    print(f"Status: {state.get('status')}")
+    interval = get_adaptive_interval_ms(state)
+    has_diff = diff_tracker.has_changed(state)
+    
+    print(f"Status: {state.get('status')} | Adaptive Interval: {interval}ms | Changed: {has_diff}")
     if state.get("player"):
         p = state["player"]
-        print(f"Player: {p.get('name')} | Lvl: {p.get('level')} | Gold: {p.get('gold')} | HP: {p.get('health')} | Streak: {p.get('streak')}")
+        print(f"Player: {p.get('name')} | Lvl: {p.get('level')} | Gold: {p.get('gold')} | HP: {p.get('health')}")
     else:
-        print("No active TFT game detected on https://127.0.0.1:2999 (Standby mode)")
+        print("Standby mode active.")

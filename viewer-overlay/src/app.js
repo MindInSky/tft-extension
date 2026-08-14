@@ -1,4 +1,5 @@
 import { renderHUD, setupTooltips } from "./ui.js";
+import { StreamSyncBuffer } from "./sync_buffer.js";
 
 export class TFTOverlayApp {
   constructor(rootElement) {
@@ -6,6 +7,14 @@ export class TFTOverlayApp {
     this.state = { st: "standby", t: Math.floor(Date.now() / 1000) };
     this.isExpanded = true;
     this.activeTab = "recipes";
+
+    this.syncBuffer = new StreamSyncBuffer({
+      mode: "stream-sync",
+      delayMs: 2500,
+      onEmit: (delayedState) => {
+        this.renderState(delayedState);
+      }
+    });
 
     this.initElements();
     this.bindEvents();
@@ -64,7 +73,11 @@ export class TFTOverlayApp {
   }
 
   updateState(newState) {
-    this.state = newState;
+    this.syncBuffer.push(newState);
+  }
+
+  renderState(state) {
+    this.state = state;
     renderHUD(this.panel, this.state);
   }
 

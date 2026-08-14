@@ -1,8 +1,48 @@
 import ssl
 import json
 import time
+import hashlib
 import urllib.request
 import urllib.error
+
+class StateDiffer:
+    def __init__(self, heartbeat_interval_seconds=5.0):
+        self.last_hash = None
+        self.last_send_time = 0
+        self.heartbeat_interval = heartbeat_interval_seconds
+
+    def compute_hash(self, state_payload):
+        if not state_payload:
+            return ""
+        # Copy without timestamp for content comparison
+        copy_obj = dict(state_payload)
+        copy_obj.pop("timestamp", None)
+        serialized = json.dumps(copy_obj, sort_keys=True)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    def has_changed(self, state_payload, current_time=None):
+        if current_time is None:
+            current_time = time.time()
+
+        curr_hash = self.compute_hash(state_payload)
+        
+        # Check if hash changed or heartbeat expired
+        if curr_hash != self.last_hash or (current_time - self.last_send_time) >= self.heartbeat_interval:
+            self.last_hash = curr_hash
+            self.last_send_time = current_time
+            return True
+        return False
+
+def get_adaptive_interval_ms(state_payload):
+    if not state_payload or state_payload.get("status") != "active":
+        return 2000 # Standby / out of game
+
+    combat = state_payload.get("combat", [])
+    if combat and len(combat) > 0:
+        return 500 # High frequency during active combat
+
+    return 1000 # Normal planning / shop phase
+
 
 class RiotLiveClient:
     def __init__(self, endpoint="https://127.0.0.1:2999", timeout_seconds=1.5):
