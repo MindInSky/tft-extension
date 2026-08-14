@@ -9,7 +9,6 @@ class RiotLiveClient:
         self.endpoint = endpoint.rstrip("/")
         self.timeout = timeout_seconds
         
-        # Self-signed certificate SSL context for local Riot Client loopback
         self.ssl_context = ssl.create_default_context()
         self.ssl_context.check_hostname = False
         self.ssl_context.verify_mode = ssl.CERT_NONE
@@ -111,8 +110,21 @@ class RiotLiveClient:
                     "tier": tier
                 })
 
-        # Sort traits by tier descending, then count
         active_traits.sort(key=lambda tr: (tr["tier"], tr["count"]), reverse=True)
+
+        # Extract combat stats
+        combat_metrics = []
+        raw_combat = raw_data.get("combatStats", [])
+        if isinstance(raw_combat, list):
+            for c in raw_combat:
+                c_name = c.get("champion") or c.get("name", "")
+                if c_name:
+                    combat_metrics.append({
+                        "champion": c_name,
+                        "damage": int(c.get("damage", 0)),
+                        "taken": int(c.get("taken", 0)),
+                        "healShield": int(c.get("healShield", c.get("healing", 0)))
+                    })
 
         return {
             "status": "active",
@@ -126,7 +138,8 @@ class RiotLiveClient:
             },
             "bench": bench_items,
             "board": board_units,
-            "traits": active_traits
+            "traits": active_traits,
+            "combat": combat_metrics
         }
 
     def fetch_and_normalize(self):

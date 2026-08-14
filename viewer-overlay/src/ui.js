@@ -6,8 +6,10 @@ import {
 } from "./recipes.js";
 import { BASE_COMPONENTS } from "./items_data.js";
 import { getChampionMeta, getTraitMeta } from "./board.js";
+import { formatMetricNumber, sortCombatMetrics } from "./combat.js";
 
 let activeComponentFilter = null;
+let activeCombatDimension = "damage";
 
 export function setupTooltips(container, tooltipElement) {
   if (!container || !tooltipElement) return;
@@ -227,6 +229,62 @@ export function renderBoard(container, boardUnits = [], traits = []) {
   }
 }
 
+export function renderCombatStats(container, combatMetrics = []) {
+  const combatTab = container.querySelector("#tab-combat");
+  if (!combatTab) return;
+
+  const doc = container.ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!doc) return;
+
+  const sorted = sortCombatMetrics(combatMetrics, activeCombatDimension);
+  const maxVal = sorted.length > 0 ? Math.max(...sorted.map(s => s.value), 1) : 1;
+
+  combatTab.innerHTML = `
+    <div class="combat-container">
+      <div class="combat-dimension-pills">
+        <button class="dimension-pill ${activeCombatDimension === "damage" ? "active" : ""}" data-dimension="damage">Damage</button>
+        <button class="dimension-pill ${activeCombatDimension === "taken" ? "active" : ""}" data-dimension="taken">Taken</button>
+        <button class="dimension-pill ${activeCombatDimension === "healShield" ? "active" : ""}" data-dimension="healShield">Heal/Shield</button>
+      </div>
+      <div id="combat-rows-container" class="combat-rows-list"></div>
+    </div>
+  `;
+
+  // Bind Dimension pills
+  const pills = combatTab.querySelectorAll(".dimension-pill");
+  pills.forEach(pill => {
+    pill.addEventListener("click", () => {
+      activeCombatDimension = pill.getAttribute("data-dimension");
+      renderCombatStats(container, combatMetrics);
+    });
+  });
+
+  const rowsContainer = combatTab.querySelector("#combat-rows-container");
+  if (sorted.length === 0 || sorted.every(s => s.value === 0)) {
+    rowsContainer.innerHTML = `<div class="empty-recipe-state">No combat round data recorded yet.</div>`;
+    return;
+  }
+
+  for (const item of sorted) {
+    const pct = Math.min(100, Math.max(4, Math.round((item.value / maxVal) * 100)));
+    const row = doc.createElement("div");
+    row.className = "combat-row";
+    row.innerHTML = `
+      <img class="combat-champ-icon" src="${item.iconUrl}" onerror="this.src='${item.fallbackIconUrl}'" alt="${item.cleanName}" />
+      <div class="combat-bar-wrapper">
+        <div class="combat-row-header">
+          <span class="combat-champ-name">${item.cleanName}</span>
+          <span class="combat-val-text">${formatMetricNumber(item.value)}</span>
+        </div>
+        <div class="combat-progress-track">
+          <div class="combat-progress-fill ${activeCombatDimension}" style="width: ${pct}%;"></div>
+        </div>
+      </div>
+    `;
+    rowsContainer.appendChild(row);
+  }
+}
+
 export function renderHUD(container, state) {
   if (!container) return;
 
@@ -278,6 +336,9 @@ export function renderHUD(container, state) {
 
     // Render Board Champions & Traits
     renderBoard(container, state.brd || [], state.trt || []);
+
+    // Render Combat Stats
+    renderCombatStats(container, state.dmg || []);
   } else {
     if (summaryBar) summaryBar.style.display = "none";
     if (tabsBar) tabsBar.style.display = "none";

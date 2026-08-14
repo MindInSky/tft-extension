@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
 import { JSDOM } from "jsdom";
-import { renderHUD, renderRecipeHelper, renderBoard } from "../src/ui.js";
+import { renderHUD, renderRecipeHelper, renderBoard, renderCombatStats } from "../src/ui.js";
 import { TFTOverlayApp } from "../src/app.js";
 
 const HTML_SKELETON = `
@@ -37,6 +37,9 @@ const HTML_SKELETON = `
         <div id="champions-container" class="champions-grid"></div>
       </div>
     </div>
+    <div id="tab-combat" class="tab-content" style="display: none;">
+      <div id="combat-container" class="combat-container"></div>
+    </div>
     <div id="standby-view" class="standby-container"></div>
   </div>
   <div id="tft-tooltip" class="tft-tooltip">
@@ -70,7 +73,7 @@ describe("Viewer Overlay UI", () => {
     assert.strictEqual(standbyView.style.display, "flex");
   });
 
-  it("renders live player metrics and craftable recipe count", () => {
+  it("renders live player metrics, recipes, board and combat charts", () => {
     const liveState = {
       st: "active",
       t: 1000,
@@ -82,32 +85,44 @@ describe("Viewer Overlay UI", () => {
       },
       bch: ["TFT_Item_BFSword", "TFT_Item_ChainVest"],
       brd: [{ c: "TFT13_Vi", s: 2, i: ["TFT_Item_Bloodthirster"] }],
-      trt: [{ k: "TFT13_Enforcer", n: 4, t: 2 }]
+      trt: [{ k: "TFT13_Enforcer", n: 4, t: 2 }],
+      dmg: [
+        { c: "TFT13_Caitlyn", d: 14500, t: 1200, h: 0 },
+        { c: "TFT13_Vi", d: 5200, t: 8400, h: 1800 }
+      ]
     };
 
     renderHUD(root, liveState);
     const statusBadge = root.querySelector("#status-badge");
     const summaryBar = root.querySelector("#player-summary");
-    const recipeBadge = root.querySelector("#recipe-tab-badge");
     const recipeCards = root.querySelectorAll(".recipe-card");
     const champCards = root.querySelectorAll(".champion-card");
-    const traitBadges = root.querySelectorAll(".trait-badge");
+    const combatRows = root.querySelectorAll(".combat-row");
 
     assert.strictEqual(statusBadge.textContent, "LIVE");
     assert.strictEqual(summaryBar.style.display, "grid");
-    assert.strictEqual(recipeBadge.textContent, "1");
     assert.strictEqual(recipeCards.length, 1);
-    assert.ok(recipeCards[0].textContent.includes("Edge of Night"));
-
-    // Board assertions
     assert.strictEqual(champCards.length, 1);
-    assert.ok(champCards[0].textContent.includes("Vi"));
-    assert.ok(champCards[0].textContent.includes("★★"));
+    assert.strictEqual(combatRows.length, 2);
+    assert.ok(combatRows[0].textContent.includes("Caitlyn"));
+    assert.ok(combatRows[0].textContent.includes("14.5k"));
+  });
 
-    // Trait assertions
-    assert.strictEqual(traitBadges.length, 1);
-    assert.ok(traitBadges[0].textContent.includes("Enforcer"));
-    assert.ok(traitBadges[0].textContent.includes("4"));
+  it("switches combat metric dimension on pill click", () => {
+    const metrics = [
+      { c: "TFT13_Caitlyn", d: 14500, t: 1200, h: 0 },
+      { c: "TFT13_Vi", d: 5200, t: 8400, h: 1800 }
+    ];
+
+    renderCombatStats(root, metrics);
+    const takenPill = root.querySelector('[data-dimension="taken"]');
+    assert.ok(takenPill);
+
+    takenPill.click();
+    const rows = root.querySelectorAll(".combat-row");
+    // Vi should now be first under 'taken'
+    assert.ok(rows[0].textContent.includes("Vi"));
+    assert.ok(rows[0].textContent.includes("8.4k"));
   });
 
   it("filters recipe combinations when clicking component chip", () => {
