@@ -7,6 +7,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   const saveBtn = document.getElementById("save-btn");
   const statusBadge = document.getElementById("status-badge");
   const diagText = document.getElementById("diag-text");
+  
+  const togglePreviewBtn = document.getElementById("toggle-preview-btn");
+  const previewBox = document.getElementById("preview-box");
+  let isPreviewOpen = false;
+
+  togglePreviewBtn.addEventListener("click", () => {
+    isPreviewOpen = !isPreviewOpen;
+    previewBox.style.display = isPreviewOpen ? "block" : "none";
+    togglePreviewBtn.textContent = isPreviewOpen ? "Hide Overlay Preview" : "Toggle Streamer Overlay Preview";
+  });
 
   const config = await window.api.getConfig();
   if (config) {

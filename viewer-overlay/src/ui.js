@@ -1,22 +1,15 @@
-import {
-  findCraftableRecipes,
-  getComponentCombinations,
-  getItemMetadata,
-  normalizeItemId
-} from "./recipes.js";
+import { getItemMetadata } from "./recipes.js";
 import { BASE_COMPONENTS } from "./items_data.js";
 import { getChampionMeta, getTraitMeta } from "./board.js";
 import { formatMetricNumber, sortCombatMetrics } from "./combat.js";
 
-let activeComponentFilter = null;
-let activeCombatDimension = "damage";
+let activeLeftTab = "bench";
+let activeRightTab = "damage";
 
 export function setupTooltips(container, tooltipElement) {
   if (!container || !tooltipElement) return;
 
   const titleElem = tooltipElement.querySelector("#tooltip-title");
-  const iconElem = tooltipElement.querySelector("#tooltip-icon");
-  const statsElem = tooltipElement.querySelector("#tooltip-stats");
   const descElem = tooltipElement.querySelector("#tooltip-desc");
 
   container.addEventListener("mouseover", (e) => {
@@ -27,321 +20,159 @@ export function setupTooltips(container, tooltipElement) {
     const meta = getItemMetadata(itemId);
 
     if (titleElem) titleElem.textContent = meta.name;
-    if (iconElem) {
-      iconElem.src = meta.iconUrl;
-      iconElem.alt = meta.name;
-    }
-    if (statsElem) {
-      const statsList = Object.entries(meta.stats || {})
-        .map(([k, v]) => `+${v} ${k.toUpperCase()}`)
-        .join(" | ");
-      statsElem.textContent = statsList || "Standard item";
-    }
     if (descElem) descElem.textContent = meta.description || "";
 
     const rect = target.getBoundingClientRect();
-    const tooltipHeight = 110;
-    const tooltipWidth = 240;
-
-    let top = rect.top - tooltipHeight - 8;
-    if (top < 10) top = rect.bottom + 8;
-    let left = rect.left - tooltipWidth + rect.width;
-    if (left < 10) left = 10;
-
-    tooltipElement.style.top = `${top}px`;
-    tooltipElement.style.left = `${left}px`;
+    tooltipElement.style.top = `${rect.bottom + 8}px`;
+    tooltipElement.style.left = `${Math.max(10, rect.left - 100)}px`;
     tooltipElement.classList.add("visible");
   });
 
   container.addEventListener("mouseout", (e) => {
-    const target = e.target.closest("[data-tooltip-item]");
-    if (target) {
+    if (e.target.closest("[data-tooltip-item]")) {
       tooltipElement.classList.remove("visible");
     }
   });
 }
 
-export function renderRecipeHelper(container, benchItems) {
-  const recipeList = container.querySelector("#recipe-list");
-  const filterContainer = container.querySelector("#component-chips-container");
-  const recipeBadge = container.querySelector("#recipe-tab-badge");
-
-  if (!recipeList || !filterContainer) return;
-
-  const doc = container.ownerDocument || (typeof document !== "undefined" ? document : null);
-  if (!doc) return;
-
-  const rawList = Array.isArray(benchItems) ? benchItems : [];
-  
-  const counts = {};
-  for (const raw of rawList) {
-    const norm = normalizeItemId(raw);
-    if (BASE_COMPONENTS[norm]) {
-      counts[norm] = (counts[norm] || 0) + 1;
-    }
-  }
-
-  filterContainer.innerHTML = "";
-  const componentKeys = Object.keys(counts);
-
-  if (componentKeys.length === 0) {
-    filterContainer.innerHTML = `<span style="font-size: 10px; color: var(--text-muted);">No components</span>`;
-  } else {
-    for (const key of componentKeys) {
-      const meta = BASE_COMPONENTS[key];
-      const chip = doc.createElement("div");
-      chip.className = `component-chip ${activeComponentFilter === key ? "active" : ""}`;
-      chip.setAttribute("data-tooltip-item", key);
-      chip.setAttribute("data-component-key", key);
-      chip.innerHTML = `
-        <img src="${meta.iconUrl}" alt="${meta.name}" />
-        <span class="chip-count">${counts[key]}</span>
-      `;
-
-      chip.addEventListener("click", () => {
-        if (activeComponentFilter === key) {
-          activeComponentFilter = null;
-        } else {
-          activeComponentFilter = key;
-        }
-        renderRecipeHelper(container, benchItems);
-      });
-
-      filterContainer.appendChild(chip);
-    }
-  }
-
-  let itemsToDisplay = [];
-  if (activeComponentFilter) {
-    const combos = getComponentCombinations(activeComponentFilter);
-    itemsToDisplay = combos.map(c => c.resultItem);
-  } else {
-    itemsToDisplay = findCraftableRecipes(rawList);
-  }
-
-  if (recipeBadge) {
-    recipeBadge.textContent = itemsToDisplay.length;
-  }
-
-  recipeList.innerHTML = "";
-  if (itemsToDisplay.length === 0) {
-    recipeList.innerHTML = `
-      <div class="empty-recipe-state">
-        ${activeComponentFilter ? "No combinations found for selected item." : "No craftable completed items with current inventory."}
-      </div>
-    `;
-    return;
-  }
-
-  for (const item of itemsToDisplay) {
-    const [c1, c2] = item.recipe || [];
-    const meta1 = BASE_COMPONENTS[c1];
-    const meta2 = BASE_COMPONENTS[c2];
-
-    const card = doc.createElement("div");
-    card.className = "recipe-card";
-    card.setAttribute("data-tooltip-item", item.id);
-    card.innerHTML = `
-      <img class="recipe-item-icon" src="${item.iconUrl}" alt="${item.name}" />
-      <div class="recipe-info">
-        <span class="recipe-name">${item.name}</span>
-        <span class="recipe-desc-preview">${item.description}</span>
-      </div>
-      <div class="recipe-formula">
-        ${meta1 ? `<img class="formula-icon" src="${meta1.iconUrl}" alt="${meta1.name}" data-tooltip-item="${meta1.id}" />` : ""}
-        <span class="formula-plus">+</span>
-        ${meta2 ? `<img class="formula-icon" src="${meta2.iconUrl}" alt="${meta2.name}" data-tooltip-item="${meta2.id}" />` : ""}
-      </div>
-    `;
-    recipeList.appendChild(card);
-  }
-}
-
-export function renderBoard(container, boardUnits = [], traits = []) {
-  const boardTab = container.querySelector("#tab-board");
-  if (!boardTab) return;
-
-  const doc = container.ownerDocument || (typeof document !== "undefined" ? document : null);
-  if (!doc) return;
-
-  boardTab.innerHTML = `
-    <div class="board-container">
-      <div id="traits-container" class="traits-summary"></div>
-      <div id="champions-container" class="champions-grid"></div>
-    </div>
-  `;
-
-  const traitsContainer = boardTab.querySelector("#traits-container");
-  const championsContainer = boardTab.querySelector("#champions-container");
-
-  // Render Traits
-  if (traits.length === 0) {
-    traitsContainer.innerHTML = `<span style="font-size: 10px; color: var(--text-muted);">No active traits</span>`;
-  } else {
-    for (const tr of traits) {
-      const traitMeta = getTraitMeta(tr.k || tr.key, tr.n || tr.count, tr.t || tr.tier);
-      const badge = doc.createElement("div");
-      badge.className = "trait-badge";
-      badge.style.borderColor = traitMeta.tierColor;
-      badge.innerHTML = `
-        <span class="trait-name">${traitMeta.cleanName}</span>
-        <span class="trait-count" style="color: ${traitMeta.tierColor};">${traitMeta.count}</span>
-      `;
-      traitsContainer.appendChild(badge);
-    }
-  }
-
-  // Render Champions
-  if (boardUnits.length === 0) {
-    championsContainer.innerHTML = `<div class="empty-recipe-state">No champions on board.</div>`;
-  } else {
-    for (const unit of boardUnits) {
-      const champName = unit.c || unit.champion;
-      const stars = unit.s || unit.stars || 1;
-      const items = unit.i || unit.items || [];
-      const champMeta = getChampionMeta(champName);
-
-      const starString = "★".repeat(Math.min(stars, 3));
-
-      const card = doc.createElement("div");
-      card.className = "champion-card";
-      card.innerHTML = `
-        <div class="champion-header">
-          <img class="champion-portrait" src="${champMeta.iconUrl}" onerror="this.src='${champMeta.fallbackIconUrl}'" alt="${champMeta.cleanName}" />
-          <div class="champion-meta">
-            <span class="champion-name">${champMeta.cleanName}</span>
-            <span class="champion-stars">${starString}</span>
-          </div>
-        </div>
-        <div class="champion-items">
-          ${items.map(rawItem => {
-            const itemMeta = getItemMetadata(rawItem);
-            return `
-              <div class="champion-item-slot" data-tooltip-item="${itemMeta.id}">
-                <img src="${itemMeta.iconUrl}" alt="${itemMeta.name}" />
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `;
-      championsContainer.appendChild(card);
-    }
-  }
-}
-
-export function renderCombatStats(container, combatMetrics = []) {
-  const combatTab = container.querySelector("#tab-combat");
-  if (!combatTab) return;
-
-  const doc = container.ownerDocument || (typeof document !== "undefined" ? document : null);
-  if (!doc) return;
-
-  const sorted = sortCombatMetrics(combatMetrics, activeCombatDimension);
-  const maxVal = sorted.length > 0 ? Math.max(...sorted.map(s => s.value), 1) : 1;
-
-  combatTab.innerHTML = `
-    <div class="combat-container">
-      <div class="combat-dimension-pills">
-        <button class="dimension-pill ${activeCombatDimension === "damage" ? "active" : ""}" data-dimension="damage">Damage</button>
-        <button class="dimension-pill ${activeCombatDimension === "taken" ? "active" : ""}" data-dimension="taken">Taken</button>
-        <button class="dimension-pill ${activeCombatDimension === "healShield" ? "active" : ""}" data-dimension="healShield">Heal/Shield</button>
-      </div>
-      <div id="combat-rows-container" class="combat-rows-list"></div>
-    </div>
-  `;
-
-  // Bind Dimension pills
-  const pills = combatTab.querySelectorAll(".dimension-pill");
-  pills.forEach(pill => {
-    pill.addEventListener("click", () => {
-      activeCombatDimension = pill.getAttribute("data-dimension");
-      renderCombatStats(container, combatMetrics);
-    });
-  });
-
-  const rowsContainer = combatTab.querySelector("#combat-rows-container");
-  if (sorted.length === 0 || sorted.every(s => s.value === 0)) {
-    rowsContainer.innerHTML = `<div class="empty-recipe-state">No combat round data recorded yet.</div>`;
-    return;
-  }
-
-  for (const item of sorted) {
-    const pct = Math.min(100, Math.max(4, Math.round((item.value / maxVal) * 100)));
-    const row = doc.createElement("div");
-    row.className = "combat-row";
-    row.innerHTML = `
-      <img class="combat-champ-icon" src="${item.iconUrl}" onerror="this.src='${item.fallbackIconUrl}'" alt="${item.cleanName}" />
-      <div class="combat-bar-wrapper">
-        <div class="combat-row-header">
-          <span class="combat-champ-name">${item.cleanName}</span>
-          <span class="combat-val-text">${formatMetricNumber(item.value)}</span>
-        </div>
-        <div class="combat-progress-track">
-          <div class="combat-progress-fill ${activeCombatDimension}" style="width: ${pct}%;"></div>
-        </div>
-      </div>
-    `;
-    rowsContainer.appendChild(row);
-  }
-}
-
 export function renderHUD(container, state) {
   if (!container) return;
+  const doc = container.ownerDocument || document;
 
-  const isLive = state && state.st === "active" && state.p;
+  // Left Panel Bindings & Tab Toggle
+  const leftBenchTab = container.querySelector('#tab-bench-content');
+  const leftTraitsTab = container.querySelector('#tab-traits-content');
+  const leftBtns = container.querySelectorAll('[data-left-tab]');
 
-  // Header & Status
-  const statusBadge = container.querySelector("#status-badge");
-  if (statusBadge) {
-    statusBadge.className = `status-badge ${isLive ? "live" : "standby"}`;
-    statusBadge.textContent = isLive ? "LIVE" : "STANDBY";
-  }
+  leftBtns.forEach(btn => {
+    btn.onclick = () => {
+      activeLeftTab = btn.getAttribute('data-left-tab');
+      leftBtns.forEach(b => b.classList.toggle('active', b === btn));
+      if (leftBenchTab) leftBenchTab.style.display = activeLeftTab === 'bench' ? 'grid' : 'none';
+      if (leftTraitsTab) leftTraitsTab.style.display = activeLeftTab === 'traits' ? 'flex' : 'none';
+    };
+  });
 
-  // Player Summary Bar & Tabs
-  const summaryBar = container.querySelector("#player-summary");
-  const tabsBar = container.querySelector("#hud-tabs");
-  const standbyView = container.querySelector("#standby-view");
+  // Right Panel Bindings & Tab Toggle
+  const rightDamageTab = container.querySelector('#tab-damage-content');
+  const rightLobbyTab = container.querySelector('#tab-lobby-content');
+  const rightBtns = container.querySelectorAll('[data-right-tab]');
 
-  if (isLive) {
-    if (summaryBar) summaryBar.style.display = "grid";
-    if (tabsBar) tabsBar.style.display = "flex";
-    if (standbyView) standbyView.style.display = "none";
+  rightBtns.forEach(btn => {
+    btn.onclick = () => {
+      activeRightTab = btn.getAttribute('data-right-tab');
+      rightBtns.forEach(b => b.classList.toggle('active', b === btn));
+      if (rightDamageTab) rightDamageTab.style.display = activeRightTab === 'damage' ? 'flex' : 'none';
+      if (rightLobbyTab) rightLobbyTab.style.display = activeRightTab === 'lobby' ? 'block' : 'none';
+    };
+  });
 
-    const p = state.p;
-    const hpElem = container.querySelector("#stat-health");
-    const lvlElem = container.querySelector("#stat-level");
-    const goldElem = container.querySelector("#stat-gold");
-    const streakElem = container.querySelector("#stat-streak");
-
-    if (hpElem) hpElem.textContent = p.hp !== undefined ? p.hp : "-";
-    if (lvlElem) lvlElem.textContent = p.lvl !== undefined ? `Lvl ${p.lvl}` : "-";
-    if (goldElem) goldElem.textContent = p.g !== undefined ? `${p.g}g` : "-";
-
-    if (streakElem) {
-      const streak = p.strk || 0;
-      if (streak > 0) {
-        streakElem.textContent = `+${streak}W`;
-        streakElem.className = "stat-value win-streak";
-      } else if (streak < 0) {
-        streakElem.textContent = `${Math.abs(streak)}L`;
-        streakElem.className = "stat-value loss-streak";
-      } else {
-        streakElem.textContent = "0";
-        streakElem.className = "stat-value";
+  // Render Bench Items
+  if (leftBenchTab) {
+    leftBenchTab.innerHTML = '';
+    const benchList = state?.bch || state?.bench || [];
+    if (benchList.length === 0) {
+      leftBenchTab.innerHTML = `<div style="grid-column: 1/-1; color:var(--text-muted); font-size:11px;">No items on bench</div>`;
+    } else {
+      for (const item of benchList) {
+        const meta = getItemMetadata(item);
+        const slot = doc.createElement('div');
+        slot.className = 'bench-item-slot';
+        slot.setAttribute('data-tooltip-item', meta.id);
+        slot.innerHTML = `<img src="${meta.iconUrl}" alt="${meta.name}" />`;
+        leftBenchTab.appendChild(slot);
       }
     }
+  }
 
-    // Render Recipe helper
-    renderRecipeHelper(container, state.bch || []);
+  // Render Traits
+  if (leftTraitsTab) {
+    leftTraitsTab.innerHTML = '';
+    const traitsList = state?.trt || state?.traits || [];
+    if (traitsList.length === 0) {
+      leftTraitsTab.innerHTML = `<div style="color:var(--text-muted); font-size:11px;">No active traits</div>`;
+    } else {
+      for (const tr of traitsList) {
+        const meta = getTraitMeta(tr.k || tr.key, tr.n || tr.count, tr.t || tr.tierStyle);
+        const row = doc.createElement('div');
+        row.className = 'trait-row';
+        row.style.background = meta.tierBg;
+        row.innerHTML = `
+          <img class="trait-icon" src="${meta.iconUrl}" onerror="this.style.display='none'" alt="${meta.cleanName}" />
+          <div class="trait-info">
+            <span class="trait-name">${meta.cleanName}</span>
+            <span class="trait-count" style="color:${meta.tierColor}">${meta.count}</span>
+          </div>
+        `;
+        leftTraitsTab.appendChild(row);
+      }
+    }
+  }
 
-    // Render Board Champions & Traits
-    renderBoard(container, state.brd || [], state.trt || []);
+  // Render Damage Meter (Physical = Red, Magic = Blue, True = White)
+  if (rightDamageTab) {
+    rightDamageTab.innerHTML = '';
+    const combatList = state?.dmg || state?.combat || [];
+    const sorted = sortCombatMetrics(combatList, 'damage');
 
-    // Render Combat Stats
-    renderCombatStats(container, state.dmg || []);
-  } else {
-    if (summaryBar) summaryBar.style.display = "none";
-    if (tabsBar) tabsBar.style.display = "none";
-    if (standbyView) standbyView.style.display = "flex";
+    if (sorted.length === 0 || sorted.every(s => s.totalDmg === 0)) {
+      rightDamageTab.innerHTML = `<div style="color:var(--text-muted); font-size:11px;">Waiting for combat round...</div>`;
+    } else {
+      const maxDmg = Math.max(...sorted.map(s => s.totalDmg || 1), 1);
+
+      for (const item of sorted) {
+        const physPct = Math.round((item.physical / maxDmg) * 100);
+        const magicPct = Math.round((item.magic / maxDmg) * 100);
+        const truePct = Math.round((item.trueDmg / maxDmg) * 100);
+        const totalPct = Math.min(100, Math.max(5, Math.round((item.totalDmg / maxDmg) * 100)));
+
+        const row = doc.createElement('div');
+        row.className = 'combat-row';
+        row.innerHTML = `
+          <img class="combat-champ-icon" src="${item.iconUrl}" onerror="this.src='${item.fallbackIconUrl}'" alt="${item.cleanName}" />
+          <div class="combat-bar-wrapper">
+            <div class="combat-row-header">
+              <span class="combat-champ-name">${item.cleanName}</span>
+              <span class="combat-val-text">${formatMetricNumber(item.totalDmg)}</span>
+            </div>
+            <div class="combat-stacked-progress" style="width: ${totalPct}%;">
+              ${physPct > 0 ? `<div class="segment-physical" style="flex:${physPct};"></div>` : ''}
+              ${magicPct > 0 ? `<div class="segment-magic" style="flex:${magicPct};"></div>` : ''}
+              ${truePct > 0 ? `<div class="segment-true" style="flex:${truePct};"></div>` : ''}
+              ${physPct === 0 && magicPct === 0 && truePct === 0 ? `<div class="segment-physical" style="flex:1;"></div>` : ''}
+            </div>
+          </div>
+        `;
+        rightDamageTab.appendChild(row);
+      }
+    }
+  }
+
+  // Render Lobby Scoreboard
+  if (rightLobbyTab) {
+    rightLobbyTab.innerHTML = '';
+    const players = state?.players || [
+      { name: state?.p?.n || "Player", hp: state?.p?.h || 100, lvl: state?.p?.l || 1 }
+    ];
+
+    for (const p of players) {
+      const hp = p.hp !== undefined ? p.hp : 100;
+      const hpClass = hp > 50 ? '' : hp > 25 ? 'mid' : 'low';
+
+      const row = doc.createElement('div');
+      row.className = 'player-row';
+      row.innerHTML = `
+        <div class="player-name-group">
+          <span class="player-name">${p.name || p.n || 'Player'}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="player-hp-bar">
+            <div class="player-hp-fill ${hpClass}" style="width:${Math.max(0, Math.min(100, hp))}%;"></div>
+          </div>
+          <span style="font-size:11px; font-weight:800; width:24px; text-align:right;">${hp}</span>
+        </div>
+      `;
+      rightLobbyTab.appendChild(row);
+    }
   }
 }

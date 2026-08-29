@@ -17,32 +17,37 @@ export function formatMetricNumber(val) {
 export function sortCombatMetrics(metricsList = [], dimension = "damage") {
   if (!Array.isArray(metricsList)) return [];
 
-  const keyMap = {
-    damage: ["d", "damage"],
-    taken: ["t", "taken"],
-    healShield: ["h", "healShield", "healing"]
-  };
-
-  const keys = keyMap[dimension] || ["damage", "d"];
-
   const normalized = metricsList.map(item => {
     const champName = item.c || item.champion || "Unknown";
     const champMeta = getChampionMeta(champName);
 
-    let val = 0;
-    for (const k of keys) {
-      if (item[k] !== undefined) {
-        val = Number(item[k]);
-        break;
-      }
+    const physical = Number(item.phys || item.physicalDamage || item.p || 0);
+    const magic = Number(item.magic || item.magicDamage || item.m || 0);
+    const trueDmg = Number(item.true || item.trueDamage || item.w || 0);
+    let totalDmg = Number(item.d || item.damage || 0);
+    if (totalDmg === 0 && (physical > 0 || magic > 0 || trueDmg > 0)) {
+      totalDmg = physical + magic + trueDmg;
     }
+
+    const taken = Number(item.t || item.taken || 0);
+    const healShield = Number(item.h || item.healShield || item.healing || 0);
+
+    let mainValue = totalDmg;
+    if (dimension === "taken") mainValue = taken;
+    if (dimension === "healShield") mainValue = healShield;
 
     return {
       champion: champName,
       cleanName: champMeta.cleanName,
       iconUrl: champMeta.iconUrl,
       fallbackIconUrl: champMeta.fallbackIconUrl,
-      value: val,
+      value: mainValue,
+      physical,
+      magic,
+      trueDmg,
+      totalDmg,
+      taken,
+      healShield,
       raw: item
     };
   });
