@@ -9,12 +9,12 @@
     "desktop-app"
   ],
   "scripts": {
-    "test": "npm run test:obs && npm run test:ebs && npm run test:viewer && npm run test:desktop",
+    "test": "pnpm run test:obs && pnpm run test:ebs && pnpm run test:viewer && pnpm run test:desktop",
     "test:obs": "python3 -m unittest discover -s obs-script -p 'test_*.py'",
-    "test:ebs": "npm --prefix ebs test",
-    "test:viewer": "npm --prefix viewer-overlay test",
-    "test:desktop": "npm --prefix desktop-app test",
-    "build:ebs": "npm --prefix ebs run build",
-    "build:desktop": "npm --prefix desktop-app run build"
+    "test:ebs": "pnpm --filter tft-twitch-ebs test",
+    "test:viewer": "pnpm --filter tft-twitch-viewer-overlay test",
+    "test:desktop": "pnpm --filter tft-desktop-app test",
+    "build:ebs": "pnpm --filter tft-twitch-ebs run build",
+    "build:desktop": "pnpm --filter tft-desktop-app run build"
   }
 }
