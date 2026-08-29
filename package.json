@@ -8,6 +8,12 @@
     "viewer-overlay",
     "desktop-app"
   ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
+  },
   "scripts": {
     "test": "pnpm run test:obs && pnpm run test:ebs && pnpm run test:viewer && pnpm run test:desktop",
     "test:obs": "python3 -m unittest discover -s obs-script -p 'test_*.py'",
