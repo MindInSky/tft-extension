@@ -5,13 +5,16 @@
   "description": "TFT Live Client Data to Twitch Video Overlay Extension",
   "workspaces": [
     "ebs",
-    "viewer-overlay"
+    "viewer-overlay",
+    "desktop-app"
   ],
   "scripts": {
-    "test": "npm run test:obs && npm run test:ebs && npm run test:viewer",
+    "test": "npm run test:obs && npm run test:ebs && npm run test:viewer && npm run test:desktop",
     "test:obs": "python3 -m unittest discover -s obs-script -p 'test_*.py'",
     "test:ebs": "npm --prefix ebs test",
     "test:viewer": "npm --prefix viewer-overlay test",
-    "build:ebs": "npm --prefix ebs run build"
+    "test:desktop": "npm --prefix desktop-app test",
+    "build:ebs": "npm --prefix ebs run build",
+    "build:desktop": "npm --prefix desktop-app run build"
   }
 }

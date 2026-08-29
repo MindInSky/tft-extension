@@ -1,0 +1,25 @@
+{
+  "name": "TFT Live Companion Overlay",
+  "version": "1.0.0",
+  "author": "Antigravity TFT Dev",
+  "description": "Live TFT item recipe solver, board champions, and combat stats video overlay for Twitch.",
+  "extension": {
+    "type": "video_overlay",
+    "viewerUrl": "index.html",
+    "canLinkExternalContent": true,
+    "supportUrl": "https://github.com",
+    "aspectRatio": {
+      "x": 16,
+      "y": 9
+    },
+    "views": {
+      "videoOverlay": {
+        "viewerUrl": "index.html",
+        "canLinkExternalContent": true
+      }
+    }
+  },
+  "requiredCapabilities": [
+    "twitch_pubsub"
+  ]
+}

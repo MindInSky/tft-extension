@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFT Twitch Desktop Companion</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+      --accent: #38bdf8;
+      --gold: #f59e0b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 24px; }
+    .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { font-size: 20px; color: var(--gold); }
+    .badge { padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #334155; text-transform: uppercase; }
+    .badge.active { background: #10b981; color: #000; }
+    .badge.standby { background: #f59e0b; color: #000; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    input { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: #fff; font-size: 14px; width: 100%; }
+    button { background: var(--accent); color: #000; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #0284c7; color: #fff; }
+    .status-text { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>TFT Twitch Desktop Companion</h1>
+      <div id="status-badge" class="badge standby">Standby</div>
+    </header>
+
+    <div class="card">
+      <h2 style="font-size: 14px;">Twitch Extension Credentials</h2>
+      <div>
+        <label>Twitch Channel ID</label>
+        <input type="text" id="channelId" placeholder="e.g. 12345678" />
+      </div>
+      <div>
+        <label>Twitch Client ID</label>
+        <input type="text" id="twitchClientId" placeholder="Twitch Developer Extension Client ID" />
+      </div>
+      <div>
+        <label>Twitch Extension Secret (Base64)</label>
+        <input type="password" id="twitchExtensionSecret" placeholder="Extension Secret Key" />
+      </div>
+      <button id="save-btn">Save & Start Syncing</button>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 14px;">Live Engine Diagnostics</h2>
+      <p class="status-text" id="diag-text">Searching for active TFT game on port 2999...</p>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

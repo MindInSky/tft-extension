@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFT Twitch Extension Developer Rig</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-surface: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --accent: #38bdf8;
+      --gold: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Left Control Sidebar */
+    .rig-sidebar {
+      width: 360px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .rig-title { font-size: 16px; font-weight: 700; color: var(--gold); }
+    .rig-subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .control-card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #cbd5e1; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    button {
+      background: #334155;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 150ms;
+    }
+    button:hover { background: #475569; }
+    button.active { background: var(--accent); color: #000; }
+    button.gold { background: var(--gold); color: #000; }
+    button.gold:hover { background: #d97706; }
+    .slider-group { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #94a3b8; }
+    input[type="range"] { width: 100%; }
+
+    /* Right Stream Video Simulator */
+    .rig-preview-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #020617;
+      position: relative;
+    }
+    .stream-viewport {
+      width: 100%;
+      max-width: 1080px;
+      aspect-ratio: 16 / 9;
+      background: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      position: relative;
+      overflow: hidden;
+    }
+    .stream-overlay-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar Controls -->
+  <div class="rig-sidebar">
+    <div>
+      <div class="rig-title">TFT Extension Dev Rig</div>
+      <div class="rig-subtitle">Simulate live Riot API state & Twitch PubSub</div>
+    </div>
+
+    <!-- Scenarios -->
+    <div class="control-card">
+      <div class="card-title">Match Scenarios</div>
+      <div class="btn-group">
+        <button id="btn-scenario-early" class="active">Early Game (Lvl 4)</button>
+        <button id="btn-scenario-mid">Mid Game (Lvl 7)</button>
+        <button id="btn-scenario-late">Late Game (Lvl 9)</button>
+        <button id="btn-scenario-standby">Standby (Lobby)</button>
+      </div>
+    </div>
+
+    <!-- State Modifiers -->
+    <div class="control-card">
+      <div class="card-title">Live State Actions</div>
+      <div class="btn-group">
+        <button id="btn-add-item">+ Add BF Sword</button>
+        <button id="btn-add-rod">+ Add Rod</button>
+        <button id="btn-win-round">+ Win Round</button>
+        <button id="btn-loss-round">- Loss Round</button>
+      </div>
+    </div>
+
+    <!-- Stream Delay Tuning -->
+    <div class="control-card">
+      <div class="card-title">Stream Delay Sync</div>
+      <div class="slider-group">
+        <div style="display: flex; justify-content: space-between;">
+          <span>Simulated Delay:</span>
+          <span id="delay-label" style="font-weight: 700; color: var(--accent);">2.5s</span>
+        </div>
+        <input type="range" id="delay-slider" min="0" max="6" step="0.5" value="2.5" />
+      </div>
+    </div>
+
+    <!-- Live Telemetry Status -->
+    <div class="control-card">
+      <div class="card-title">Current Payload Info</div>
+      <div id="payload-meta" style="font-size: 11px; color: #94a3b8; font-family: monospace; line-height: 1.6;">
+        Status: active<br/>
+        Size: ~840 bytes<br/>
+        PubSub Channel: 12345678
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Viewport Area -->
+  <div class="rig-preview-area">
+    <div class="stream-viewport">
+      <iframe id="overlay-frame" class="stream-overlay-frame" src="./index.html"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const iframe = document.getElementById("overlay-frame");
+    let currentScenarioState = {};
+
+    const SCENARIOS = {
+      early: {
+        st: "active",
+        t: Date.now(),
+        p: { name: "TFTStreamer#NA1", lvl: 4, g: 18, hp: 96, strk: 2 },
+        bch: ["TFT_Item_BFSword", "TFT_Item_ChainVest"],
+        brd: [
+          { c: "TFT13_Vi", s: 1, i: ["TFT_Item_ChainVest"] },
+          { c: "TFT13_Powder", s: 2, i: [] }
+        ],
+        trt: [{ k: "TFT13_Enforcer", n: 2, t: 1 }],
+        dmg: [
+          { c: "TFT13_Vi", d: 1450, t: 2200, h: 400 },
+          { c: "TFT13_Powder", d: 2100, t: 800, h: 0 }
+        ]
+      },
+      mid: {
+        st: "active",
+        t: Date.now(),
+        p: { name: "TFTStreamer#NA1", lvl: 7, g: 42, hp: 74, strk: 4 },
+        bch: ["TFT_Item_BFSword", "TFT_Item_NeedlesslyLargeRod", "TFT_Item_RecurveBow", "TFT_Item_SparringGloves"],
+        brd: [
+          { c: "TFT13_Vi", s: 2, i: ["TFT_Item_Bloodthirster", "TFT_Item_TitansResolve"] },
+          { c: "TFT13_Caitlyn", s: 2, i: ["TFT_Item_InfinityEdge", "TFT_Item_LastWhisper"] },
+          { c: "TFT13_Ambessa", s: 1, i: ["TFT_Item_SteraksGage"] }
+        ],
+        trt: [
+          { k: "TFT13_Enforcer", n: 4, t: 2 },
+          { k: "TFT13_Sniper", n: 2, t: 1 }
+        ],
+        dmg: [
+          { c: "TFT13_Caitlyn", d: 11450, t: 1200, h: 0 },
+          { c: "TFT13_Vi", d: 6200, t: 7800, h: 1800 },
+          { c: "TFT13_Ambessa", d: 4500, t: 4100, h: 600 }
+        ]
+      },
+      late: {
+        st: "active",
+        t: Date.now(),
+        p: { name: "TFTStreamer#NA1", lvl: 9, g: 65, hp: 48, strk: 6 },
+        bch: ["TFT_Item_BFSword", "TFT_Item_ChainVest", "TFT_Item_TearOfTheGoddess", "TFT_Item_NeedlesslyLargeRod", "TFT_Item_GiantsBelt"],
+        brd: [
+          { c: "TFT13_Vi", s: 3, i: ["TFT_Item_Bloodthirster", "TFT_Item_TitansResolve", "TFT_Item_SteraksGage"] },
+          { c: "TFT13_Caitlyn", s: 2, i: ["TFT_Item_InfinityEdge", "TFT_Item_LastWhisper", "TFT_Item_GiantSlayer"] },
+          { c: "TFT13_Heimerdinger", s: 2, i: ["TFT_Item_BlueBuff", "TFT_Item_RabadonsDeathcap"] },
+          { c: "TFT13_Ambessa", s: 2, i: ["TFT_Item_EdgeOfNight", "TFT_Item_HandOfJustice"] }
+        ],
+        trt: [
+          { k: "TFT13_Enforcer", n: 6, t: 3 },
+          { k: "TFT13_Sniper", n: 2, t: 1 },
+          { k: "TFT13_Academy", n: 3, t: 1 }
+        ],
+        dmg: [
+          { c: "TFT13_Caitlyn", d: 18450, t: 1100, h: 0 },
+          { c: "TFT13_Heimerdinger", d: 14200, t: 900, h: 0 },
+          { c: "TFT13_Vi", d: 9800, t: 14200, h: 3600 },
+          { c: "TFT13_Ambessa", d: 8100, t: 6500, h: 1200 }
+        ]
+      },
+      standby: {
+        st: "standby",
+        t: Date.now()
+      }
+    };
+
+    function broadcastState(state) {
+      currentScenarioState = JSON.parse(JSON.stringify(state));
+      if (iframe && iframe.contentWindow && iframe.contentWindow.__TFT_APP__) {
+        iframe.contentWindow.__TFT_APP__.updateState(currentScenarioState);
+      }
+      updateMetaDisplay(currentScenarioState);
+    }
+
+    function updateMetaDisplay(state) {
+      const meta = document.getElementById("payload-meta");
+      const bytes = new TextEncoder().encode(JSON.stringify(state)).length;
+      meta.innerHTML = `
+        Status: ${state.st}<br/>
+        Size: ~${bytes} bytes (<5KB limit)<br/>
+        Bench Count: ${state.bch ? state.bch.length : 0}<br/>
+        Board Count: ${state.brd ? state.brd.length : 0}
+      `;
+    }
+
+    // Bind scenarios
+    document.getElementById("btn-scenario-early").onclick = () => broadcastState(SCENARIOS.early);
+    document.getElementById("btn-scenario-mid").onclick = () => broadcastState(SCENARIOS.mid);
+    document.getElementById("btn-scenario-late").onclick = () => broadcastState(SCENARIOS.late);
+    document.getElementById("btn-scenario-standby").onclick = () => broadcastState(SCENARIOS.standby);
+
+    // Bind modifiers
+    document.getElementById("btn-add-item").onclick = () => {
+      if (!currentScenarioState.bch) currentScenarioState.bch = [];
+      currentScenarioState.bch.push("TFT_Item_BFSword");
+      broadcastState(currentScenarioState);
+    };
+
+    document.getElementById("btn-add-rod").onclick = () => {
+      if (!currentScenarioState.bch) currentScenarioState.bch = [];
+      currentScenarioState.bch.push("TFT_Item_NeedlesslyLargeRod");
+      broadcastState(currentScenarioState);
+    };
+
+    document.getElementById("btn-win-round").onclick = () => {
+      if (currentScenarioState.p) {
+        currentScenarioState.p.g += 6;
+        currentScenarioState.p.strk = Math.max(1, currentScenarioState.p.strk + 1);
+        broadcastState(currentScenarioState);
+      }
+    };
+
+    document.getElementById("btn-loss-round").onclick = () => {
+      if (currentScenarioState.p) {
+        currentScenarioState.p.hp = Math.max(0, currentScenarioState.p.hp - 8);
+        currentScenarioState.p.strk = Math.min(-1, (currentScenarioState.p.strk < 0 ? currentScenarioState.p.strk - 1 : -1));
+        broadcastState(currentScenarioState);
+      }
+    };
+
+    // Delay slider
+    const delaySlider = document.getElementById("delay-slider");
+    const delayLabel = document.getElementById("delay-label");
+    delaySlider.oninput = () => {
+      delayLabel.textContent = `${delaySlider.value}s`;
+      if (iframe.contentWindow && iframe.contentWindow.__TFT_APP__) {
+        iframe.contentWindow.__TFT_APP__.syncBuffer.setDelayMs(Number(delaySlider.value) * 1000);
+      }
+    };
+
+    // Initial broadcast on load
+    iframe.onload = () => {
+      setTimeout(() => broadcastState(SCENARIOS.mid), 300);
+    };
+  </script>
+</body>
+</html>
